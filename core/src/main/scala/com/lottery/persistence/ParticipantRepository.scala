@@ -1,13 +1,12 @@
-package com.lottery.api.persistence
+package com.lottery.persistence
 
 import cats.effect.kernel.Async
 import com.lottery.domain.Participant
-import com.lottery.domain.Participant.ParticipantId
 import dev.profunktor.redis4cats.RedisCommands
 import io.circe.syntax.*
 import cats.implicits.*
 import com.lottery.logging.Logging
-import com.lottery.api.util.Crypto
+import com.lottery.util.Crypto
 import dev.profunktor.redis4cats.algebra.StringCommands
 import io.circe.{Decoder, Encoder, Json}
 import io.circe.parser.decode

@@ -7,10 +7,11 @@ import com.lottery.config.ConfigLoader
 import com.lottery.draw.domain.config.AppConfig
 import com.lottery.draw.routes.DrawRoutes
 import com.lottery.draw.service.DrawService
+import com.lottery.draw.stream.DrawWorker
 import com.lottery.logging.Logging
 import com.lottery.modules.Http.httpServer
 import com.lottery.modules.Redis
-import com.lottery.persistence.LotteryRepository
+import com.lottery.persistence.{LotteryRepository, ParticipantRepository}
 import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.effect.{Log, MkRedis}
 import dev.profunktor.redis4cats.log4cats.log4CatsInstance
@@ -21,16 +22,23 @@ object Main extends IOApp.Simple with Logging[IO] {
 
   private def resources[F[_]: Async: MkRedis: Log: Random](
       config: AppConfig
-  ): Resource[F, (Server, RedisCommands[F, String, String])] = {
+  ): Resource[
+    F,
+    (Server, RedisCommands[F, String, String], fs2.Stream[F, Unit])
+  ] = {
     for {
       redisApi <- Redis.redisApi[F](config.redis)
       lotteryRepo = LotteryRepository.redis[F](redisApi)
-      drawService = DrawService.default[F](lotteryRepo)
+      participantRepo = ParticipantRepository.redis[F](redisApi)
+      drawService = DrawService.default[F](lotteryRepo, participantRepo)
       allRoutes: HttpApp[F] = Router(
         "/api/v1" -> DrawRoutes[F](drawService).routes
       ).orNotFound
       httpServer <- httpServer[F](config.server, allRoutes)
-    } yield (httpServer, redisApi)
+      cronStream <- Resource.pure(
+        DrawWorker.default[F](drawService).cronStream()
+      )
+    } yield (httpServer, redisApi, cronStream)
   }
 
   override def run: IO[Unit] = {
@@ -38,8 +46,12 @@ object Main extends IOApp.Simple with Logging[IO] {
       _ <- logger.info("Application starting up...")
       config <- ConfigLoader.default[IO, AppConfig].load
       _ <- logger.info(s"Loaded config $config")
-      serverResource <- resources[IO](config).use { (httpServer, redisApi) =>
-        logger.info(s"Server started on ${httpServer.address}") *> IO.never
+      serverResource <- resources[IO](config).use {
+        (httpServer, redisApi, cronStream) =>
+          IO.race(
+            cronStream.compile.drain,
+            logger.info(s"Server started on ${httpServer.address}") *> IO.never
+          )
       }
     } yield ()).handleErrorWith { error =>
       logger.error(error)(

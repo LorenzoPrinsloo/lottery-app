@@ -1,18 +1,16 @@
 package com.lottery.domain
 
 import com.lottery.domain.Ballot.BallotId
-import com.lottery.domain.Participant.ParticipantId
 import io.circe.generic.semiauto.deriveCodec
 import io.circe.{Codec, Decoder, Encoder}
-
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 
 case class Ballot(
-    id: BallotId,
-    participantId: ParticipantId,
-    lotteryDate: LocalDate,
-    submittedAt: LocalDateTime
+   id: BallotId,
+   email: String,
+   lotteryDate: LocalDate,
+   submittedAt: LocalDateTime
 )
 object Ballot {
   opaque type BallotId = UUID

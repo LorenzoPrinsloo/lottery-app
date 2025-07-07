@@ -93,8 +93,5 @@ class LotteryRoutes[F[_]: Async: Concurrent](service: LotteryService[F])
 //        case Some(result) => Ok(result)
 //        case None => NotFound(s"No winner found for lottery on $date")
 //      }
-
-    // TODO move to draw-service
-//    case POST -> Root / "lotteries" / LocalDateVar(date) / "performDraw" => ???
   }
 }

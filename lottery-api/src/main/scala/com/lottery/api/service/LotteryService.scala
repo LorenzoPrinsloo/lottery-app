@@ -2,7 +2,7 @@ package com.lottery.api.service
 
 import cats.effect.kernel.Async
 import com.lottery.domain.{Ballot, Participant}
-import com.lottery.api.persistence.ParticipantRepository
+import com.lottery.persistence.ParticipantRepository
 import cats.implicits.*
 import com.lottery.domain.Ballot.BallotId
 import com.lottery.domain.error.ApiError.{BadRequest, Conflict}
@@ -57,7 +57,7 @@ object LotteryService {
           val ballots = List.tabulate(noBallots) { _ =>
             Ballot(
               BallotId(UUID.randomUUID()),
-              participant.id,
+              participant.email,
               lotteryDate,
               submitTime
             )
@@ -71,7 +71,7 @@ object LotteryService {
             lotteryDate.plusDays(1),
             noBallots,
             lottery
-              .map(_.ballots.count(_.participantId == participant.id).toLong)
+              .map(_.ballots.count(_.email == participant.email).toLong)
               .getOrElse(0L)
           )
         })

@@ -1,4 +1,4 @@
-package com.lottery.api.util
+package com.lottery.util
 
 import java.security.MessageDigest
 import java.nio.charset.StandardCharsets

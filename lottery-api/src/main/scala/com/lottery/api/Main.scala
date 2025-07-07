@@ -1,36 +1,22 @@
 package com.lottery.api
 
-import cats.MonadThrow
 import cats.effect.*
 import cats.implicits.*
 import com.lottery.config.ConfigLoader
 import com.lottery.api.domain.config.AppConfig
 import com.lottery.logging.Logging
-import com.lottery.api.persistence.ParticipantRepository
+import com.lottery.persistence.ParticipantRepository
 import com.lottery.api.routes.LotteryRoutes
 import com.lottery.api.service.LotteryService
-import com.lottery.domain.config.{HttpServerConfig, RedisConfig}
 import com.lottery.modules.Redis
 import com.lottery.persistence.LotteryRepository
-import dev.profunktor.redis4cats.algebra.StringCommands
-import dev.profunktor.redis4cats.connection.RedisClient
 import dev.profunktor.redis4cats.effect.{Log, MkRedis}
-import io.lettuce.core.{ClientOptions, TimeoutOptions}
 import org.http4s.*
-import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.implicits.*
 import org.http4s.server.{Router, Server}
-import dev.profunktor.redis4cats.config.*
 import com.lottery.modules.Http.*
 import dev.profunktor.redis4cats.RedisCommands
-
-import scala.concurrent.duration.*
 import dev.profunktor.redis4cats.log4cats.log4CatsInstance
-//import dev.profunktor.redis4cats.algebra.StringCommands
-//import dev.profunktor.redis4cats.connection.*
-//import dev.profunktor.redis4cats.data.RedisCodec
-//import dev.profunktor.redis4cats.log4cats.*
-//import dev.profunktor.redis4cats.*
 
 object Main extends IOApp.Simple with Logging[IO] {
 

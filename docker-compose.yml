@@ -1,0 +1,50 @@
+# --- WORKFLOW ---
+# 1. Build the application's Docker image from the terminal:
+#    sbt Docker/publishLocal
+#
+# 2. Start all services defined in this file:
+#    docker-compose up
+#
+# 3. To stop the services:
+#    Ctrl+C in the terminal, then `docker-compose down`
+
+version: '3.8'
+
+services:
+  # 1. Nginx Load Balancer
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: lottery-load-balancer
+    ports:
+      # Map port 8080 on your host to port 80 in the Nginx container.
+      - "8080:80"
+    volumes:
+      # Mount our custom nginx.conf file into the container.
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - lottery-api
+
+  # 2. Lottery API Service
+  lottery-api:
+    # This is the name of the image that is built with sbt-native-packager. It becomes available after running sbt `Docker/publishLocal`
+    image: lottery-service:1.0.0
+    platform: linux/amd64
+    environment:
+      - REDIS_URI=redis://redis:6379
+      - SERVER_HOST=0.0.0.0
+    depends_on:
+      - redis
+
+  # 3. Redis DB
+  redis:
+    image: redis:7-alpine
+    container_name: lottery-redis
+    ports:
+      - "6379:6379"
+    # enable AOF persistence.
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+
+volumes:
+  redis_data:

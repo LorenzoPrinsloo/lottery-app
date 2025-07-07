@@ -1,0 +1,56 @@
+// Latest LTS Version of Scala 3
+val scala3Version = "3.3.6"
+
+val catsVersion = "2.13.0"
+val catsEffectVersion = "3.6.1"
+val fs2Version = "3.12.0"
+val http4sVersion = "0.23.30"
+val circeVersion = "0.14.14"
+val redis4catsVersion = "2.0.1"
+val logbackVersion = "1.5.18"
+val ip4sVersion = "3.7.0"
+val log4catsVersion = "2.7.1"
+val pureConfigVersion = "0.17.9"
+
+lazy val root = project
+  .in(file("."))
+  .enablePlugins(DockerPlugin, JavaAppPackaging, AshScriptPlugin)
+  .settings(
+    name := "lottery-service",
+    version := "1.0.0",
+    scalaVersion := scala3Version,
+    libraryDependencies ++= Seq(
+      "org.scalameta" %% "munit" % "1.0.0" % Test,
+      // --- Concurrency ---
+      "org.typelevel" %% "cats-core" % catsVersion,
+      "org.typelevel" %% "cats-effect" % catsEffectVersion,
+      // --- Streaming ---
+      "co.fs2" %% "fs2-core" % fs2Version,
+      // --- HTTP ---
+      "org.http4s" %% "http4s-dsl" % http4sVersion,
+      "org.http4s" %% "http4s-ember-server" % http4sVersion,
+      "org.http4s" %% "http4s-ember-client" % http4sVersion,
+      "org.http4s" %% "http4s-circe" % http4sVersion,
+      // --- JSON ---
+      "io.circe" %% "circe-core" % circeVersion,
+      "io.circe" %% "circe-generic" % circeVersion,
+      "io.circe" %% "circe-parser" % circeVersion,
+      // --- Redis ---
+      "dev.profunktor" %% "redis4cats-core" % redis4catsVersion,
+      "dev.profunktor" %% "redis4cats-effects" % redis4catsVersion,
+      // --- Logging ---
+      "dev.profunktor" %% "redis4cats-log4cats" % redis4catsVersion,
+      "org.typelevel" %% "log4cats-slf4j" % log4catsVersion,
+      "ch.qos.logback" % "logback-classic" % logbackVersion % Runtime,
+      // --- Util ---
+      "com.comcast" %% "ip4s-core" % ip4sVersion,
+      // --- Config ---
+      "com.github.pureconfig" %% "pureconfig-core" % pureConfigVersion,
+      "com.github.pureconfig" % "pureconfig-ip4s_3" % pureConfigVersion,
+      "com.github.pureconfig" %% "pureconfig-cats-effect" % pureConfigVersion
+    ),
+    mainClass := Some("com.lottery.Main"),
+    dockerBaseImage := "eclipse-temurin:17-jre-alpine",
+    dockerExposedPorts := Seq(8080),
+    dockerBuildOptions ++= Seq("--platform", "linux/amd64")
+  )

@@ -1,4 +1,4 @@
-package com.lottery.api.domain
+package com.lottery.domain
 
 import java.time.LocalDate
 

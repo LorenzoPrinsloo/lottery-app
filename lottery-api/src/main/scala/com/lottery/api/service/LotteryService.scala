@@ -1,13 +1,14 @@
 package com.lottery.api.service
 
 import cats.effect.kernel.Async
-import com.lottery.api.domain.{Ballot, Participant}
-import com.lottery.api.persistence.{LotteryRepository, ParticipantRepository}
+import com.lottery.domain.{Ballot, Participant}
+import com.lottery.api.persistence.ParticipantRepository
 import cats.implicits.*
-import com.lottery.api.domain.Ballot.BallotId
-import com.lottery.api.domain.error.ApiError.{BadRequest, Conflict}
+import com.lottery.domain.Ballot.BallotId
+import com.lottery.domain.error.ApiError.{BadRequest, Conflict}
 import com.lottery.api.domain.response.SubmitBallotsResponse
-import com.lottery.api.logging.Logging
+import com.lottery.logging.Logging
+import com.lottery.persistence.LotteryRepository
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 

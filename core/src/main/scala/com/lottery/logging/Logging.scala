@@ -1,4 +1,4 @@
-package com.lottery.api.logging
+package com.lottery.logging
 
 import cats.effect.kernel.Sync
 import org.typelevel.log4cats.slf4j.Slf4jFactory

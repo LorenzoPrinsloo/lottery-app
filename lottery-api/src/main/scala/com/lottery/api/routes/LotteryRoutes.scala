@@ -3,14 +3,14 @@ package com.lottery.api.routes
 import cats.MonadThrow
 import cats.effect.*
 import cats.implicits.*
-import com.lottery.api.domain.Participant
-import com.lottery.api.domain.Participant.participantCodec
-import com.lottery.api.domain.error.ApiError
+import com.lottery.domain.Participant
+import com.lottery.domain.Participant.participantCodec
+import com.lottery.domain.error.ApiError
 import com.lottery.api.domain.request.{
   RegisterParticipantRequest,
   SubmitBallotsRequest
 }
-import com.lottery.api.logging.Logging
+import com.lottery.logging.Logging
 import com.lottery.api.service.LotteryService
 import io.circe.generic.auto.*
 import io.circe.{Decoder, Encoder, Json}

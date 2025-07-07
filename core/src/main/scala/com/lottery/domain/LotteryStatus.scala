@@ -1,4 +1,4 @@
-package com.lottery.api.domain
+package com.lottery.domain
 
 enum LotteryStatus {
   case OPEN, CLOSED;

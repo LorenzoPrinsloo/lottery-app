@@ -1,9 +1,10 @@
-package com.lottery.api.domain
+package com.lottery.domain
 
-import com.lottery.api.domain.Ballot.BallotId
-import com.lottery.api.domain.Participant.ParticipantId
-import io.circe.{Codec, Decoder, Encoder}
+import com.lottery.domain.Ballot.BallotId
+import com.lottery.domain.Participant.ParticipantId
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 

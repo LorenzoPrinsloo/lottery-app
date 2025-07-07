@@ -1,11 +1,12 @@
-package com.lottery.api.domain
+package com.lottery.domain
 
-import com.lottery.api.domain.Participant.ParticipantId
-import io.circe.{Codec, Decoder, Encoder}
+import cats.implicits.*
+import com.lottery.domain.Participant.ParticipantId
 import io.circe.generic.semiauto.deriveCodec
+import io.circe.{Codec, Decoder, Encoder}
+
 import java.time.LocalDateTime
 import java.util.UUID
-import cats.implicits.*
 
 case class Participant(id: ParticipantId, name: String, email: String, registeredAt: LocalDateTime)
 object Participant {

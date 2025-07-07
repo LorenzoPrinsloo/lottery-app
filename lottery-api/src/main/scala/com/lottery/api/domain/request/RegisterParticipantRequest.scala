@@ -1,7 +1,7 @@
 package com.lottery.api.domain.request
 
-import com.lottery.api.domain.Participant
-import com.lottery.api.domain.Participant.ParticipantId
+import com.lottery.domain.Participant
+import com.lottery.domain.Participant.ParticipantId
 import io.circe.{Codec, Decoder, Encoder}
 
 import java.time.LocalDateTime

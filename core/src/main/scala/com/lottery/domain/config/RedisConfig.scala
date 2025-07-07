@@ -1,4 +1,4 @@
-package com.lottery.api.domain.config
+package com.lottery.domain.config
 
 import pureconfig.*
 

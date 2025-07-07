@@ -1,4 +1,4 @@
-package com.lottery.api.domain.error
+package com.lottery.domain.error
 
 import cats.effect.kernel.Async
 import io.circe.Codec

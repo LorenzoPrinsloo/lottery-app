@@ -1,4 +1,4 @@
-package com.lottery.api.domain.config
+package com.lottery.domain.config
 
 import com.comcast.ip4s.{Host, Port}
 import pureconfig.*

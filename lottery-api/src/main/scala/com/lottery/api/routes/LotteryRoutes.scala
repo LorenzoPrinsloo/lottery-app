@@ -12,6 +12,7 @@ import com.lottery.api.domain.request.{
 }
 import com.lottery.logging.Logging
 import com.lottery.api.service.LotteryService
+import com.lottery.modules.Http.RouteDsl
 import io.circe.generic.auto.*
 import io.circe.{Decoder, Encoder, Json}
 import org.http4s.*
@@ -22,38 +23,7 @@ import java.time.LocalDate
 import org.http4s.dsl.*
 
 class LotteryRoutes[F[_]: Async: Concurrent](service: LotteryService[F])
-    extends Logging[F]
-    with Http4sDsl[F] {
-
-  private object LocalDateVar {
-    def unapply(str: String): Option[LocalDate] = {
-      Either.catchNonFatal(LocalDate.parse(str)).toOption
-    }
-  }
-
-  private def withErrorHandling(
-      request: Request[F]
-  )(block: => F[Response[F]]): F[Response[F]] = {
-    block
-      .onError(error =>
-        logger.error(error)(s"${request.method} ${request.uri} Failed")
-      )
-      .recoverWith {
-        case apiError: ApiError => apiError.toResponse
-        case e                  => InternalServerError(s"Unhandled Exception: $e")
-      }
-  }
-
-  extension(e: ApiError) {
-    def toResponse: F[Response[F]] = {
-      e match {
-        case ApiError.BadRequest(details) => BadRequest(details)
-        case ApiError.Conflict(details)   => Conflict(details)
-        case ApiError.InternalServerError(details) =>
-          InternalServerError(details)
-      }
-    }
-  }
+    extends RouteDsl[F] {
 
   val routes: HttpRoutes[F] = HttpRoutes.of[F] {
     case req @ POST -> Root / "participants" =>
@@ -88,10 +58,12 @@ class LotteryRoutes[F[_]: Async: Concurrent](service: LotteryService[F])
         }
       }
 
-    case GET -> Root / "lotteries" / LocalDateVar(date) / "winner" => ???
-//      LotteryApplicationService.getWinner(date).flatMap {
-//        case Some(result) => Ok(result)
-//        case None => NotFound(s"No winner found for lottery on $date")
-//      }
+    case req @ GET -> Root / "lotteries" / LocalDateVar(date) / "winner" =>
+      withErrorHandling(req) {
+        for {
+          result <- service.fetchLotteryResult(date)
+          response <- Ok(result)
+        } yield response
+      }
   }
 }

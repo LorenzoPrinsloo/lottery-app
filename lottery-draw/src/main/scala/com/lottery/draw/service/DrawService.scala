@@ -25,7 +25,7 @@ object DrawService {
         date: LocalDate
     ): F[Option[LotteryResultResponse]] = for {
       drawTime <- Temporal[F].realTimeInstant
-      mbLottery <- lotteryRepo.get(date)
+      mbLottery <- lotteryRepo.getOpen(date)
       result <- mbLottery
         .fold(ifEmpty =
           logger

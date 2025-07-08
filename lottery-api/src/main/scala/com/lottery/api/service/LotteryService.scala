@@ -6,19 +6,28 @@ import com.lottery.persistence.ParticipantRepository
 import cats.implicits.*
 import com.lottery.domain.Ballot.BallotId
 import com.lottery.domain.error.ApiError.{BadRequest, Conflict}
-import com.lottery.api.domain.response.SubmitBallotsResponse
+import com.lottery.api.domain.response.{
+  LotteryResultResponse,
+  SubmitBallotsResponse
+}
+import com.lottery.domain.error.ApiError
 import com.lottery.logging.Logging
 import com.lottery.persistence.LotteryRepository
+
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 
 trait LotteryService[F[_]] extends Logging[F] {
   def registerParticipant(participant: Participant): F[Participant]
+
   def submitBallots(
       email: String,
       lotteryDate: LocalDate,
       noBallots: Int
   ): F[SubmitBallotsResponse]
+
+  def fetchLotteryResult(date: LocalDate): F[LotteryResultResponse]
+
 }
 object LotteryService {
   def default[F[_]: Async](
@@ -65,7 +74,7 @@ object LotteryService {
 
           for {
             _ <- lotteryRepo.submitBallots(lotteryDate, ballots)
-            lottery <- lotteryRepo.get(lotteryDate)
+            lottery <- lotteryRepo.getOpen(lotteryDate)
           } yield SubmitBallotsResponse(
             lotteryDate,
             lotteryDate.plusDays(1),
@@ -75,8 +84,33 @@ object LotteryService {
               .getOrElse(0L)
           )
         })
-        lottery <- lotteryRepo.get(lotteryDate)
+        lottery <- lotteryRepo.getOpen(lotteryDate)
       } yield response
+    }
+
+    override def fetchLotteryResult(
+        date: LocalDate
+    ): F[LotteryResultResponse] = {
+      lotteryRepo
+        .getClosed(date)
+        .flatMap { mbResult =>
+          mbResult.fold(ifEmpty =
+            Async[F].raiseError(
+              ApiError.NotFound(s"No LotteryResult found for $date")
+            )
+          ) { result =>
+            participantRepo
+              .get(result.winnerEmail)
+              .map { winner =>
+                LotteryResultResponse(
+                  result.lotteryDate,
+                  result.winningBallotId,
+                  winner.map(_.name),
+                  result.drawnAt
+                )
+              }
+          }
+        }
     }
   }
 }

@@ -14,10 +14,12 @@ sealed trait ApiError extends Throwable {
 
 object ApiError {
   case class BadRequest(details: String) extends ApiError
-  
+
   case class Conflict(details: String) extends ApiError
 
   case class InternalServerError(details: String) extends ApiError
+
+  case class NotFound(details: String) extends ApiError
 
   implicit val codec: Codec[ApiError] = deriveCodec
 }

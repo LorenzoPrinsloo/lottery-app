@@ -16,7 +16,8 @@ import java.time.format.DateTimeFormatter
 
 trait LotteryRepository[F[_]] extends Logging[F] {
   def submitBallots(lotteryDate: LocalDate, ballots: List[Ballot]): F[Long]
-  def get(lotteryDate: LocalDate): F[Option[Lottery]]
+  def getOpen(lotteryDate: LocalDate): F[Option[Lottery]]
+  def getClosed(lotteryDate: LocalDate): F[Option[LotteryResult]]
   def closeLottery(result: LotteryResult): F[Unit]
 }
 object LotteryRepository {
@@ -38,7 +39,7 @@ object LotteryRepository {
       }
     }
 
-    override def get(lotteryDate: LocalDate): F[Option[Lottery]] = {
+    override def getOpen(lotteryDate: LocalDate): F[Option[Lottery]] = {
       redis.lRange(key(OPEN, lotteryDate), 0, -1).flatMap { ballotJsons =>
         if (ballotJsons.isEmpty) {
           Async[F].pure(None)
@@ -58,6 +59,27 @@ object LotteryRepository {
           }
         }
       }
+    }
+
+    override def getClosed(lotteryDate: LocalDate): F[Option[LotteryResult]] = {
+      redis
+        .get(key(CLOSED, lotteryDate))
+        .flatMap { mbJson =>
+          mbJson
+            .traverse(json =>
+              decode[LotteryResult](json) match {
+                case Left(error) =>
+                  logger.error(error)("Failed to decode LotteryResult") *>
+                    Async[F]
+                      .raiseError[LotteryResult](
+                        InternalServerError(
+                          s"Failed to decode LotteryResult: ${error.getCause}"
+                        )
+                      )
+                case Right(value) => Async[F].pure(value)
+              }
+            )
+        }
     }
 
     override def closeLottery(

@@ -2,7 +2,6 @@ package com.lottery.draw
 
 import cats.effect.std.Random
 import cats.effect.{Async, IO, IOApp, Resource}
-import com.comcast.ip4s.port
 import com.lottery.config.ConfigLoader
 import com.lottery.draw.domain.config.AppConfig
 import com.lottery.draw.routes.DrawRoutes

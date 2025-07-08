@@ -1,6 +1,5 @@
 package com.lottery.draw.service
 
-import cats.effect.kernel.Clock
 import cats.effect.{Async, Temporal}
 import cats.effect.std.Random
 import com.lottery.persistence.{LotteryRepository, ParticipantRepository}
@@ -8,8 +7,7 @@ import cats.implicits.*
 import com.lottery.domain.LotteryResult
 import com.lottery.draw.domain.response.LotteryResultResponse
 import com.lottery.logging.Logging
-
-import java.time.{LocalDate, LocalDateTime, ZoneId}
+import java.time.{LocalDate, ZoneId}
 
 trait DrawService[F[_]] extends Logging[F] {
   def performDraw(date: LocalDate): F[Option[LotteryResultResponse]]

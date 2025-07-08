@@ -2,7 +2,7 @@ package com.lottery.draw.stream
 
 import cats.effect.kernel.Async
 import com.lottery.logging.Logging
-import java.time.{Duration, LocalDate, LocalTime, ZoneId, ZonedDateTime}
+import java.time.{Duration, LocalDate, ZoneId, ZonedDateTime}
 import scala.concurrent.duration.*
 import cats.implicits.*
 import com.lottery.draw.domain.config.CronConfig

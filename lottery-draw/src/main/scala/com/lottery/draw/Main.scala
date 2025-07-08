@@ -10,7 +10,7 @@ import com.lottery.draw.service.DrawService
 import com.lottery.draw.stream.DrawWorker
 import com.lottery.logging.Logging
 import com.lottery.modules.Http.httpServer
-import com.lottery.modules.Redis
+import com.lottery.modules.{AuthMiddleware, Redis}
 import com.lottery.persistence.{LotteryRepository, ParticipantRepository}
 import dev.profunktor.redis4cats.RedisCommands
 import dev.profunktor.redis4cats.effect.{Log, MkRedis}
@@ -19,6 +19,16 @@ import org.http4s.HttpApp
 import org.http4s.server.{Router, Server}
 
 object Main extends IOApp.Simple with Logging[IO] {
+
+  private def routes[F[_]: Async](drawService: DrawService[F]): HttpApp[F] = {
+    val drawRoutes = DrawRoutes[F](drawService).routes
+    val authMiddleware = AuthMiddleware[F]("super-secret-secret")
+    val protectedRoutes = authMiddleware(drawRoutes)
+
+    Router(
+      "/api/v1" -> protectedRoutes
+    ).orNotFound
+  }
 
   private def resources[F[_]: Async: MkRedis: Log: Random](
       config: AppConfig
@@ -31,9 +41,7 @@ object Main extends IOApp.Simple with Logging[IO] {
       lotteryRepo = LotteryRepository.redis[F](redisApi)
       participantRepo = ParticipantRepository.redis[F](redisApi)
       drawService = DrawService.default[F](lotteryRepo, participantRepo)
-      allRoutes: HttpApp[F] = Router(
-        "/api/v1" -> DrawRoutes[F](drawService).routes
-      ).orNotFound
+      allRoutes: HttpApp[F] = routes[F](drawService)
       httpServer <- httpServer[F](config.server, allRoutes)
       cronStream <- Resource.pure(
         DrawWorker.default[F](drawService).cronStream()

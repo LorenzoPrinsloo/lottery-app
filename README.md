@@ -5,7 +5,7 @@ This project implements a simple lottery system as a set of microservices built 
 The architecture consists of 4 main components:
 
 * **`lottery-api`**: A HTTP service that handles user registration and ballot submissions. This service is designed to be horizontally scalable.
-* **`lottery-draw`**: A background worker service responsible for performing the daily lottery draw. It runs a cron job and also exposes a secure developer endpoint for manual draws.
+* **`lottery-draw`**: A single background worker service responsible for performing the daily lottery draw. It runs a cron job and also exposes a secure developer endpoint for manual draws.
 * **`redis`**: The database used for persistence.
 * **`ngnix`**: For DNS and routing.
 

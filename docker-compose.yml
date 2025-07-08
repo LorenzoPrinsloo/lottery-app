@@ -41,6 +41,10 @@ services:
     environment:
       - REDIS_URI=redis://redis:6379
       - SERVER_HOST=0.0.0.0
+      - API_SECRET=3afb9eb305e2f961a0cdcb0c874c69f4
+      - TIME_ZONE=Europe/Amsterdam
+      - DRAW_TIME=22:15
+      - DAY_OFFSET=0
     depends_on:
       - redis
 

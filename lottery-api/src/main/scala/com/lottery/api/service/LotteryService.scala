@@ -13,7 +13,6 @@ import com.lottery.api.domain.response.{
 import com.lottery.domain.error.ApiError
 import com.lottery.logging.Logging
 import com.lottery.persistence.LotteryRepository
-
 import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 

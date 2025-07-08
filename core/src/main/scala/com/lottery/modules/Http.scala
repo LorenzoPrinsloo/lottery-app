@@ -7,7 +7,6 @@ import org.http4s.dsl.Http4sDsl
 import org.http4s.{HttpApp, Request, Response}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
-
 import java.time.LocalDate
 import cats.implicits.*
 import com.lottery.logging.Logging

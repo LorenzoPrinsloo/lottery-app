@@ -7,7 +7,6 @@ import dev.profunktor.redis4cats.data.RedisCodec
 import dev.profunktor.redis4cats.effect.{Log, MkRedis}
 import dev.profunktor.redis4cats.{RedisCommands, Redis as Redis4Cats}
 import io.lettuce.core.{ClientOptions, TimeoutOptions}
-import org.typelevel.log4cats.Logger
 
 object Redis {
 

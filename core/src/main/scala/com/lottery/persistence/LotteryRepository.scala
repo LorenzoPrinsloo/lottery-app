@@ -3,14 +3,12 @@ package com.lottery.persistence
 import cats.effect.kernel.Async
 import com.lottery.domain.{Ballot, Lottery, LotteryResult, LotteryStatus}
 import com.lottery.logging.Logging
-import dev.profunktor.redis4cats.algebra.StringCommands
 import io.circe.syntax.*
 import cats.implicits.*
 import com.lottery.domain.LotteryStatus.{CLOSED, OPEN}
 import com.lottery.domain.error.ApiError.InternalServerError
 import dev.profunktor.redis4cats.RedisCommands
 import io.circe.parser.decode
-
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 

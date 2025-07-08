@@ -47,7 +47,7 @@ class LotteryRoutes[F[_]: Async: Concurrent](service: LotteryService[F])
             submitResponse <- service.submitBallots(
               request.email,
               date,
-              request.noBallots
+              request.count
             )
             resp <- Ok(submitResponse)
           } yield resp

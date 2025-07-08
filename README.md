@@ -102,3 +102,11 @@ To stop and remove all the containers and networks created by Docker Compose, ru
 ```bash
 docker-compose down
 ```
+
+## Redis Persistence
+
+The Redis service is configured for durability to ensure that no participant or ballot data is lost.
+
+* **AOF (Append Only File) Persistence:** The `docker-compose.yml` file starts Redis with the `--appendonly yes` flag. This instructs Redis to log every write operation to a file on disk, providing strong durability.
+
+* **Docker Volume:** A named volume (`redis_data`) is configured to store this AOF file. This means the data lives on your host machine, outside the container. If you shut down and remove the containers with `docker-compose down`, the data will still be there. When you run `docker-compose up` again, Redis will automatically reload the data from the persisted file.

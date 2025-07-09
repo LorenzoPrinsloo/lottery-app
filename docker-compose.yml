@@ -43,10 +43,13 @@ services:
       - SERVER_HOST=0.0.0.0
       - API_SECRET=3afb9eb305e2f961a0cdcb0c874c69f4
       - TIME_ZONE=Europe/Amsterdam
-      - DRAW_TIME=00:01
-      - DAY_OFFSET=1
+      - DRAW_TIME=10:33
+      - DAY_OFFSET=0
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
     depends_on:
       - redis
+      - mailhog
 
   # 4. Redis DB
   redis:
@@ -58,6 +61,11 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
+
+  # 5. The MailHog Email Catcher
+  mailhog:
+    image: mailhog/mailhog
+    platform: linux/amd64
 
 volumes:
   redis_data:

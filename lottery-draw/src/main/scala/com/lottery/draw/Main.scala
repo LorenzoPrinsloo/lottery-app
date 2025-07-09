@@ -3,6 +3,7 @@ package com.lottery.draw
 import cats.effect.std.Random
 import cats.effect.{Async, IO, IOApp, Resource}
 import com.lottery.config.ConfigLoader
+import com.lottery.draw.client.EmailClient
 import com.lottery.draw.domain.config.AppConfig
 import com.lottery.draw.routes.DrawRoutes
 import com.lottery.draw.service.DrawService
@@ -16,6 +17,7 @@ import dev.profunktor.redis4cats.effect.{Log, MkRedis}
 import dev.profunktor.redis4cats.log4cats.log4CatsInstance
 import org.http4s.HttpApp
 import org.http4s.server.{Router, Server}
+import java.time.ZoneId
 
 object Main extends IOApp.Simple with Logging[IO] {
 
@@ -42,11 +44,19 @@ object Main extends IOApp.Simple with Logging[IO] {
       redisApi <- Redis.redisApi[F](config.redis)
       lotteryRepo = LotteryRepository.redis[F](redisApi)
       participantRepo = ParticipantRepository.redis[F](redisApi)
-      drawService = DrawService.default[F](lotteryRepo, participantRepo)
+      emailClient = EmailClient.default[F](config.mailhog)
+      drawService = DrawService.default[F](
+        lotteryRepo,
+        participantRepo,
+        emailClient,
+        ZoneId.of(config.cron.timeZone)
+      )
       allRoutes: HttpApp[F] = routes[F](drawService, config.apiSecret)
       httpServer <- httpServer[F](config.server, allRoutes)
       cronStream <- Resource.pure(
-        DrawWorker.default[F](drawService, config.cron).cronStream()
+        DrawWorker
+          .default[F](drawService, config.cron)
+          .cronStream()
       )
     } yield (httpServer, redisApi, cronStream)
   }

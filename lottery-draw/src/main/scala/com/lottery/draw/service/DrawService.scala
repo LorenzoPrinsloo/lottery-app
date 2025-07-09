@@ -4,9 +4,11 @@ import cats.effect.{Async, Temporal}
 import cats.effect.std.Random
 import com.lottery.persistence.{LotteryRepository, ParticipantRepository}
 import cats.implicits.*
-import com.lottery.domain.LotteryResult
+import com.lottery.domain.{LotteryResult, Participant}
+import com.lottery.draw.client.EmailClient
 import com.lottery.draw.domain.response.LotteryResultResponse
 import com.lottery.logging.Logging
+import org.simplejavamail.email.EmailBuilder
 import java.time.{LocalDate, ZoneId}
 
 trait DrawService[F[_]] extends Logging[F] {
@@ -15,9 +17,34 @@ trait DrawService[F[_]] extends Logging[F] {
 object DrawService {
   def default[F[_]: Async: Random](
       lotteryRepo: LotteryRepository[F],
-      participantRepo: ParticipantRepository[F]
+      participantRepo: ParticipantRepository[F],
+      emailClient: EmailClient[F],
+      systemZone: ZoneId
   ): DrawService[F] = new DrawService[F] {
-    val systemZone: ZoneId = ZoneId.of("Europe/Amsterdam")
+
+    private def sendNotification(
+        winner: Option[Participant],
+        lotteryDate: LocalDate
+    ): F[Unit] = {
+      winner.fold(ifEmpty =
+        logger.warn("Couldn't find participant to send mail to")
+      ) { participant =>
+        logger.info(s"Sending Winner Notification") *>
+          emailClient.sendMail(
+            EmailBuilder
+              .startingBlank()
+              .from("The Lottery", "noreply@lotteryservice.com")
+              .to(participant.name, participant.email)
+              .withSubject(
+                s"Congratulations! You've won the lottery for $lotteryDate!"
+              )
+              .withPlainText(
+                s"Dear ${participant.name},\n\nCongratulations! You are the winner of the lottery held on $lotteryDate.\n\nBest regards,\nThe Lottery Team"
+              )
+              .buildEmail()
+          )
+      }
+    }
 
     override def performDraw(
         date: LocalDate
@@ -48,6 +75,7 @@ object DrawService {
             )
             _ <- lotteryRepo.closeLottery(lotteryResult)
             winner <- participantRepo.get(winningBallot.email)
+            _ <- sendNotification(winner, date)
           } yield LotteryResultResponse(
             lotteryResult.lotteryDate,
             lotteryResult.winningBallotId,

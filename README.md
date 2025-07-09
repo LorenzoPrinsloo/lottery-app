@@ -8,6 +8,7 @@ The architecture consists of 4 main components:
 * **`lottery-draw`**: A single background worker service responsible for performing the daily lottery draw. It runs a cron job and also exposes a secure developer endpoint for manual draws.
 * **`redis`**: The database used for persistence.
 * **`ngnix`**: For DNS and routing.
+* **`mailhog`**: Mock Email Inbox and routing.
 
 ## Prerequisites
 
@@ -110,3 +111,11 @@ The Redis service is configured for durability to ensure that no participant or 
 * **AOF (Append Only File) Persistence:** The `docker-compose.yml` file starts Redis with the `--appendonly yes` flag. This instructs Redis to log every write operation to a file on disk, providing strong durability.
 
 * **Docker Volume:** A named volume (`redis_data`) is configured to store this AOF file. This means the data lives on your host machine, outside the container. If you shut down and remove the containers with `docker-compose down`, the data will still be there. When you run `docker-compose up` again, Redis will automatically reload the data from the persisted file.
+
+## Email Notifications (MailHog)
+
+To test the email notification functionality for lottery winners, this project includes **MailHog**, a mock email server that catches and displays emails instead of sending them.
+
+* **Accessing the Mailbox:** You can view the mock inbox by navigating to **`http://localhost:8080/mail/`** in your web browser.
+* **How it Works:** When the `lottery-draw` service performs a draw and selects a winner, it sends a notification email. MailHog intercepts this email, and it will appear instantly in the web UI. This allows you to verify that the email sending logic is working correctly, view the content of the email, and confirm the recipient is correct.
+* **Disclaimer:** MailHog is a development and testing tool only. It is not a real SMTP server. All emails sent by the application will be caught and displayed in this single, shared inbox.

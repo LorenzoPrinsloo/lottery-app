@@ -37,7 +37,9 @@ object DrawWorker {
               .now()
               .minusDays(config.dayOffset)
             logger.info(s"Cron triggered: performing draw for $lotteryDate") *>
-              service.performDraw(lotteryDate).void
+              service
+                .performDraw(lotteryDate)
+                .void
           }
       }
     }

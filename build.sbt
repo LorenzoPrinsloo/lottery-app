@@ -80,6 +80,9 @@ lazy val lotteryDraw = (project in file("lottery-draw"))
   .enablePlugins(DockerPlugin, JavaAppPackaging, AshScriptPlugin)
   .settings(
     name := "draw-service", // This will be the name of the Docker image
+    libraryDependencies ++= Seq(
+      "org.simplejavamail" % "simple-java-mail" % "8.11.1"
+    ),
     scalaVersion := scala3Version,
     mainClass := Some("com.lottery.draw.Main"),
     dockerBaseImage := "eclipse-temurin:17-jre-alpine",

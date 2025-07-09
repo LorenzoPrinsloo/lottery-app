@@ -7,10 +7,10 @@ import java.time.{LocalDate, LocalDateTime}
 import java.util.UUID
 
 case class Ballot(
-   id: BallotId,
-   email: String,
-   lotteryDate: LocalDate,
-   submittedAt: LocalDateTime
+    id: BallotId,
+    email: String,
+    lotteryDate: LocalDate,
+    submittedAt: LocalDateTime
 )
 object Ballot {
   opaque type BallotId = UUID

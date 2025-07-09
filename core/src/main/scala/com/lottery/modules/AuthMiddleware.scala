@@ -10,13 +10,15 @@ import org.http4s.implicits.http4sStringSyntax
 
 object AuthMiddleware {
 
-  /**
-   * The authentication function.
-   * It inspects a request and returns an `OptionT` containing the "user" if successful.
-   *
-   * [A] =>> OptionT[F, A] == OptionT[F, *] in scala 2 with kind projector plugin
-   */
-  private def authUser[F[_]: Async](secret: String): Kleisli[[A] =>> OptionT[F, A], Request[F], Unit] =
+  /** The authentication function. It inspects a request and returns an
+    * `OptionT` containing the "user" if successful.
+    *
+    * [A] =>> OptionT[F, A] == OptionT[F, *] in scala 2 with kind projector
+    * plugin
+    */
+  private def authUser[F[_]: Async](
+      secret: String
+  ): Kleisli[[A] =>> OptionT[F, A], Request[F], Unit] =
     Kleisli { req =>
       val maybeHeader = req.headers.get("X-Api-Secret".ci)
       val isAuthorized = maybeHeader.exists(_.head.value == secret)

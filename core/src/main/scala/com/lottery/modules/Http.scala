@@ -43,11 +43,11 @@ object Http {
         )
         .recoverWith {
           case apiError: ApiError => apiError.toResponse
-          case e                  => InternalServerError(s"Unhandled Exception: $e")
+          case e => InternalServerError(s"Unhandled Exception: $e")
         }
     }
 
-    extension(e: ApiError) {
+    extension (e: ApiError) {
       def toResponse: F[Response[F]] = {
         e match {
           case ApiError.BadRequest(details) => BadRequest(details)

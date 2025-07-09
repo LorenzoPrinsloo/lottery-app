@@ -10,11 +10,13 @@ import io.lettuce.core.{ClientOptions, TimeoutOptions}
 
 object Redis {
 
-  /** A shared, reusable Resource for creating a Redis connection.
-    * Both the lottery-api and lottery-draw services can use this method.
+  /** A shared, reusable Resource for creating a Redis connection. Both the
+    * lottery-api and lottery-draw services can use this method.
     *
-    * @param config The Redis configuration (URI, timeout).
-    * @return A Resource that safely acquires and releases the RedisCommands client.
+    * @param config
+    *   The Redis configuration (URI, timeout).
+    * @return
+    *   A Resource that safely acquires and releases the RedisCommands client.
     */
   def redisApi[F[_]: Async: MkRedis: Log](
       config: RedisConfig

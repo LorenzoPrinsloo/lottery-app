@@ -10,6 +10,25 @@ The architecture consists of 4 main components:
 * **`ngnix`**: For DNS and routing.
 * **`mailhog`**: Mock Email Inbox and routing.
 
+***
+
+### **Table of Contents**
+
+1. [Prerequisites](#prerequisites)
+2. [Getting Started](#getting-started)
+    * [Step 1: Build the Docker Images](#step-1-build-the-docker-images)
+    * [Step 2: Start the Services](#step-2-start-the-services)
+    * [Step 3: Verify and Test](#step-3-verify-and-test)
+    * [Step 4: Shutting Down](#step-4-shutting-down)
+3. [Key Features & Configuration](#key-features--configuration)
+    * [Lottery API](#lottery-api)
+    * [Scaling the API Service](#scaling-the-api-service)
+    * [Lottery Draw](#lottery-draw)
+    * [Email Notifications (MailHog)](#email-notifications-mailhog)
+    * [Redis Persistence](#redis-persistence)
+
+***
+
 ## Prerequisites
 
 Before you begin, ensure you have the following installed:
@@ -43,6 +62,28 @@ Once all containers have finished starting up, you can access the application on
 
 You can now interact with the services through the Nginx gateway. Here are some example `curl` commands to test the endpoints.
 
+### Step 4: Shutting Down
+
+To stop and remove all the containers and networks created by Docker Compose, run:
+```bash
+docker-compose down
+```
+
+***
+
+## Key Features & Configuration
+
+### Scaling the API Service
+
+The `lottery-api` service is designed to be horizontally scaled. You can run multiple instances of it to handle increased load. The Nginx gateway is configured to automatically load-balance traffic between all running instances in a round-robin fashion.
+
+To scale up the service, use the `--scale` flag with `docker-compose up`. For example, to run 3 instances of the API:
+
+```bash
+docker-compose up -d --scale lottery-api={NO_INSTANCES}
+```
+
+### Lottery API
 #### **Register a Participant**
 
   This command will register a new participant. On success, it will return the new participant's details, including their unique ID.
@@ -54,7 +95,7 @@ curl 'localhost:8080/service/api/v1/participants' \
     "name": "John",
     "email": "john.doe@example.com"
 }'
-  ```
+```
   
 #### **Submit Ballots for Today's Lottery**
 
@@ -77,7 +118,10 @@ This command retrieves the winning result for a lottery on a specific date. If n
 curl 'localhost:8080/service/api/v1/lotteries/{{YYYY-MM-DD}}/winner'
 ```
 
-#### **Configuring the Automatic Lottery Draw**
+***
+
+## Lottery Draw
+### **Automatic Draw**
 
 By default, the `lottery-draw` service will perform the daily lottery draw at 00:01 in the `Europe/Amsterdam` timezone and will draw a winner for the previous day's lottery.
 You can customize this schedule by setting the following environment variables in the `docker-compose.yml` file for the `lottery-draw` service:
@@ -88,7 +132,7 @@ You can customize this schedule by setting the following environment variables i
 
 * `DAY_OFFSET`: Sets which day's lottery to draw. `1` means draw yesterday's lottery (default), `0` means draw today's lottery.
 
-#### **Trigger a Manual Draw (Developer Endpoint)**
+### **Manual Draw (Developer Endpoint)**
 
 This endpoint is useful for testing the draw logic without waiting for the cron job. Remember to replace API_SECRET with the secret-key defined in docker-compose.yml and use a valid date. (one that is not in the past)
 
@@ -97,20 +141,7 @@ curl --request POST 'localhost:8080/draw/api/v1/{{YYYY-MM-DD}}' \
 --header 'X-Api-Secret: {{API_SECRET}}'
 ```
 
-### Step 4: Shutting Down
-
-To stop and remove all the containers and networks created by Docker Compose, run: 
-```bash
-docker-compose down
-```
-
-## Redis Persistence
-
-The Redis service is configured for durability to ensure that no participant or ballot data is lost.
-
-* **AOF (Append Only File) Persistence:** The `docker-compose.yml` file starts Redis with the `--appendonly yes` flag. This instructs Redis to log every write operation to a file on disk, providing strong durability.
-
-* **Docker Volume:** A named volume (`redis_data`) is configured to store this AOF file. This means the data lives on your host machine, outside the container. If you shut down and remove the containers with `docker-compose down`, the data will still be there. When you run `docker-compose up` again, Redis will automatically reload the data from the persisted file.
+***
 
 ## Email Notifications (MailHog)
 
@@ -119,3 +150,13 @@ To test the email notification functionality for lottery winners, this project i
 * **Accessing the Mailbox:** You can view the mock inbox by navigating to **`http://localhost:8080/mail/`** in your web browser.
 * **How it Works:** When the `lottery-draw` service performs a draw and selects a winner, it sends a notification email. MailHog intercepts this email, and it will appear instantly in the web UI. This allows you to verify that the email sending logic is working correctly, view the content of the email, and confirm the recipient is correct.
 * **Disclaimer:** MailHog is a development and testing tool only. It is not a real SMTP server. All emails sent by the application will be caught and displayed in this single, shared inbox.
+
+***
+
+## Redis Persistence
+
+The Redis service is configured for durability to ensure that no participant or ballot data is lost.
+
+* **AOF (Append Only File) Persistence:** The `docker-compose.yml` file starts Redis with the `--appendonly yes` flag. This instructs Redis to log every write operation to a file on disk, providing strong durability.
+
+* **Docker Volume:** A named volume (`redis_data`) is configured to store this AOF file. This means the data lives on your host machine, outside the container. If you shut down and remove the containers with `docker-compose down`, the data will still be there. When you run `docker-compose up` again, Redis will automatically reload the data from the persisted file.

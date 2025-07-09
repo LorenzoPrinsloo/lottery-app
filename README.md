@@ -2,7 +2,7 @@
 
 This project implements a simple lottery system as a set of microservices built with Scala, Cats Effect, and Http4s. The entire application stack is containerized and can be run locally using Docker Compose.
 
-The architecture consists of 4 main components:
+The architecture consists of the following components:
 
 * **`lottery-api`**: A HTTP service that handles user registration and ballot submissions. This service is designed to be horizontally scalable.
 * **`lottery-draw`**: A single background worker service responsible for performing the daily lottery draw. It runs a cron job and also exposes a secure developer endpoint for manual draws.

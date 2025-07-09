@@ -16,7 +16,7 @@ The architecture consists of 4 main components:
 
 1. [Prerequisites](#prerequisites)
 2. [Getting Started](#getting-started)
-    * [Step 1: Build the Docker Images](#step-1-build-the-docker-images)
+    * [Step 1: Build the Project & Docker Images](#step-1-build-the-project--docker-images)
     * [Step 2: Start the Services](#step-2-start-the-services)
     * [Step 3: Verify and Test](#step-3-verify-and-test)
     * [Step 4: Shutting Down](#step-4-shutting-down)
@@ -40,19 +40,25 @@ Before you begin, ensure you have the following installed:
 
 Follow these steps to build the Docker images and run the entire application. All commands should be run from the root directory of the project.
 
-### Step 1: Build the Docker Images
+### Step 1: Build the Project & Docker Images
 
 This project uses *sbt-native-packager* to build Docker images for each service directly from SBT. 
 
-First you need to build the docker images for all services. 
-This can be done by running `sbt Docker / publishLocal` from the project Root directory 
+First you need to build the project & docker images for all services. 
+This can be done by running the following commands from the project Root directory
+
+```bash
+sbt update
+sbt compile
+sbt Docker / publishLocal
+```
 
 ### Step 2: Start the Services
 
 With the images built, you can now start all the services using Docker Compose.
 
 ```bash
-# Start all services (lottery-api, draw-service, Nginx, Redis) in detached mode
+# Start all services in detached mode
 docker-compose up -d
 ```
 

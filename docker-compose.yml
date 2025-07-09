@@ -43,8 +43,8 @@ services:
       - SERVER_HOST=0.0.0.0
       - API_SECRET=3afb9eb305e2f961a0cdcb0c874c69f4
       - TIME_ZONE=Europe/Amsterdam
-      - DRAW_TIME=10:33
-      - DAY_OFFSET=0
+      - DRAW_TIME=00:01
+      - DAY_OFFSET=1
       - SMTP_HOST=mailhog
       - SMTP_PORT=1025
     depends_on:

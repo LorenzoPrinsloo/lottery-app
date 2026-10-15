@@ -16,5 +16,8 @@ jobs:
           java-version: 17
           cache: sbt
       - uses: sbt/setup-sbt@v1
+      - name: Resolve dependencies
+        run: sbt -batch update
       # Includes the Redis integration tests, which start Redis in Docker through Testcontainers
-      - run: sbt -batch testFull
+      - name: Test
+        run: sbt -batch testFull

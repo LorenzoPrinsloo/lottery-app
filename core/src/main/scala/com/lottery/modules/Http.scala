@@ -4,7 +4,7 @@ import cats.effect.{Async, Resource}
 import com.lottery.domain.config.HttpServerConfig
 import com.lottery.domain.error.ApiError
 import org.http4s.dsl.Http4sDsl
-import org.http4s.{HttpApp, Request, Response}
+import org.http4s.{DecodeFailure, HttpApp, Request, Response}
 import org.http4s.ember.server.EmberServerBuilder
 import org.http4s.server.Server
 import java.time.LocalDate
@@ -43,6 +43,8 @@ object Http {
         )
         .recoverWith {
           case apiError: ApiError => apiError.toResponse
+          case failure: DecodeFailure =>
+            BadRequest(s"Invalid request body: ${failure.message}")
           case e => InternalServerError(s"Unhandled Exception: $e")
         }
     }

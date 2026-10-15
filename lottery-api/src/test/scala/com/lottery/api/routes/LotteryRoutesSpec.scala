@@ -84,4 +84,21 @@ class LotteryRoutesSpec extends CatsEffectSuite {
     client.flatMap((c, _) => c.run(Request[IO](Method.GET, uri"/lotteries/2030-13-45/winner")).use(r => IO.pure(r.status)))
       .assertEquals(Status.NotFound)
   }
+
+  test("a body that isn't valid JSON is a 400 Bad Request") {
+    client.flatMap((c, _) => c.run(Request[IO](Method.POST, uri"/participants").withEntity("{not json")).use(r => IO.pure(r.status)))
+      .assertEquals(Status.BadRequest)
+  }
+
+  test("JSON with missing fields is a 400 Bad Request") {
+    client.flatMap((c, _) => post(c, uri"/participants", Json.obj("name" -> Json.fromString("Ada"))))
+      .map((status, _) => assertEquals(status, Status.BadRequest))
+  }
+
+  test("a ballot count that isn't a number is a 400 Bad Request") {
+    client.flatMap { (c, _) =>
+      register(c, "Ada", "ada@example.com") *>
+        post(c, Uri.unsafeFromString(s"/lotteries/$future/ballots"), Json.obj("email" -> Json.fromString("ada@example.com"), "count" -> Json.fromString("five")))
+    }.map((status, _) => assertEquals(status, Status.BadRequest))
+  }
 }

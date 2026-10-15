@@ -12,6 +12,8 @@ import com.lottery.modules.Redis
 import com.lottery.persistence.LotteryRepository
 import dev.profunktor.redis4cats.effect.{Log, MkRedis}
 import org.http4s.*
+import java.time.ZoneId
+import cats.effect.std.UUIDGen
 import org.http4s.implicits.*
 import org.http4s.server.{Router, Server}
 import com.lottery.modules.Http.*
@@ -20,16 +22,17 @@ import dev.profunktor.redis4cats.log4cats.log4CatsInstance
 
 object Main extends IOApp.Simple with Logging[IO] {
 
-  def resources[F[_]: Async: MkRedis: Log](
+  def resources[F[_]: Async: MkRedis: Log: UUIDGen](
       config: AppConfig
   ): Resource[F, (Server, RedisCommands[F, String, String])] = {
     for {
       redisApi <- Redis.redisApi[F](config.redis)
       participantRepo = ParticipantRepository.redis[F](redisApi)
       lotteryRepo = LotteryRepository.redis[F](redisApi)
-      lotteryService = LotteryService.default[F](participantRepo, lotteryRepo)
+      zone = ZoneId.of(config.timeZone)
+      lotteryService = LotteryService.default[F](participantRepo, lotteryRepo, zone)
       allRoutes: HttpApp[F] = Router(
-        "/api/v1" -> LotteryRoutes[F](lotteryService).routes
+        "/api/v1" -> LotteryRoutes[F](lotteryService, zone).routes
       ).orNotFound
       httpServer <- httpServer[F](config.server, allRoutes)
     } yield (httpServer, redisApi)

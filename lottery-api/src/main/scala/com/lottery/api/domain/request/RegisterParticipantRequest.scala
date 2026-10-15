@@ -6,7 +6,6 @@ import java.time.LocalDateTime
 
 case class RegisterParticipantRequest(name: String, email: String)
     derives Codec {
-  def asParticipant(): Participant = {
-    Participant(name = name, email = email, registeredAt = LocalDateTime.now())
-  }
+  def asParticipant(registeredAt: LocalDateTime): Participant =
+    Participant(name = name, email = email, registeredAt = registeredAt)
 }

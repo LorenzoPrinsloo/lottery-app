@@ -13,8 +13,8 @@ import com.lottery.api.domain.response.{
 import com.lottery.domain.error.ApiError
 import com.lottery.logging.Logging
 import com.lottery.persistence.LotteryRepository
-import java.time.{LocalDate, LocalDateTime}
-import java.util.UUID
+import cats.effect.std.UUIDGen
+import java.time.{LocalDate, LocalDateTime, ZoneId}
 
 trait LotteryService[F[_]] extends Logging[F] {
   def registerParticipant(participant: Participant): F[Participant]
@@ -29,9 +29,10 @@ trait LotteryService[F[_]] extends Logging[F] {
 
 }
 object LotteryService {
-  def default[F[_]: Async](
+  def default[F[_]: Async: UUIDGen](
       participantRepo: ParticipantRepository[F],
-      lotteryRepo: LotteryRepository[F]
+      lotteryRepo: LotteryRepository[F],
+      zone: ZoneId = ZoneId.systemDefault()
   ): LotteryService[F] = new LotteryService[F] {
     override def registerParticipant(
         request: Participant
@@ -62,18 +63,10 @@ object LotteryService {
             BadRequest(s"No Registered participant found for $email")
           )
         )(participant => {
-          val submitTime = LocalDateTime.now()
-
-          val ballots = List.tabulate(noBallots) { _ =>
-            Ballot(
-              BallotId(UUID.randomUUID()),
-              participant.email,
-              lotteryDate,
-              submitTime
-            )
-          }
-
           for {
+            submitTime <- Async[F].realTimeInstant.map(LocalDateTime.ofInstant(_, zone))
+            ids <- List.fill(noBallots)(UUIDGen[F].randomUUID).sequence
+            ballots = ids.map(id => Ballot(BallotId(id), participant.email, lotteryDate, submitTime))
             _ <- lotteryRepo.submitBallots(lotteryDate, ballots)
             lottery <- lotteryRepo.getOpen(lotteryDate)
           } yield SubmitBallotsResponse(
@@ -85,7 +78,6 @@ object LotteryService {
               .getOrElse(0L)
           )
         })
-        lottery <- lotteryRepo.getOpen(lotteryDate)
       } yield response
     }
 

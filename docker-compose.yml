@@ -21,6 +21,7 @@ services:
     environment:
       - REDIS_URI=redis://redis:6379
       - SERVER_HOST=0.0.0.0
+      - TIME_ZONE=Europe/Amsterdam
     depends_on:
       - redis
 

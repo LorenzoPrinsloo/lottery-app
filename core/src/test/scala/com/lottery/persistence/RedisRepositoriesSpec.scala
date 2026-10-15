@@ -80,10 +80,11 @@ class RedisRepositoriesSpec extends RedisSuite {
       val repo = ParticipantRepository.redis[IO](redis)
       val p = participant()
       for {
-        _ <- repo.insert(p)
+        inserted <- repo.insert(p)
         found <- repo.get(p.email)
         missing <- repo.get("nobody@example.com")
       } yield {
+        assert(inserted)
         assertEquals(found, Some(p))
         assertEquals(missing, None)
       }
@@ -96,6 +97,20 @@ class RedisRepositoriesSpec extends RedisSuite {
         _ <- ParticipantRepository.redis[IO](redis).insert(participant())
         keys <- redis.keys("*")
       } yield assert(keys.nonEmpty && keys.forall(k => !k.contains("ada")), keys.toString)
+    }
+  }
+
+  test("inserting a participant whose email is taken keeps the original") {
+    withRedis { redis =>
+      val repo = ParticipantRepository.redis[IO](redis)
+      for {
+        first <- repo.insert(participant("Ada"))
+        second <- repo.insert(participant("Impostor"))
+        stored <- repo.get("ada@example.com")
+      } yield {
+        assertEquals((first, second), (true, false))
+        assertEquals(stored.map(_.name), Some("Ada"))
+      }
     }
   }
 }

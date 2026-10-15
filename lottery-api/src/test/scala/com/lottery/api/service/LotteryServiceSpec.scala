@@ -146,4 +146,10 @@ class LotteryServiceSpec extends CatsEffectSuite {
       List(1, 2, 999, 1000).traverse(n => svc.submitBallots(ada.email, today.plusDays(n.toLong), n).map(_.ballotsSubmitted))
     }.map(counts => assertEquals(counts, List(1L, 2L, 999L, 1000L)))
   }
+
+  test("a conflict doesn't reveal the existing participant's details") {
+    service(ada).flatMap((svc, _, _) => svc.registerParticipant(ada.copy(name = "Someone else")).attempt).map { r =>
+      assert(r.left.exists(e => e.isInstanceOf[ApiError.Conflict] && !e.getMessage.contains("Ada") && !e.getMessage.contains("registeredAt")), r)
+    }
+  }
 }

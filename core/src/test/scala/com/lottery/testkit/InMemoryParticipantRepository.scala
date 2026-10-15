@@ -7,7 +7,8 @@ import com.lottery.persistence.ParticipantRepository
 
 /** A ParticipantRepository backed by a Ref, for testing services without Redis. */
 class InMemoryParticipantRepository[F[_]: Sync](val state: Ref[F, Map[String, Participant]]) extends ParticipantRepository[F] {
-  override def insert(participant: Participant): F[Unit] = state.update(_.updated(participant.email, participant))
+  override def insert(participant: Participant): F[Boolean] =
+    state.modify(m => if (m.contains(participant.email)) (m, false) else (m.updated(participant.email, participant), true))
   override def get(email: String): F[Option[Participant]] = state.get.map(_.get(email))
 }
 

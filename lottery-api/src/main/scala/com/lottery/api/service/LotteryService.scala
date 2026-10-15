@@ -41,13 +41,9 @@ object LotteryService {
           (Validation.name(request.name), Validation.email(request.email))
             .mapN((name, email) => request.copy(name = name, email = email))
         )
-        mbParticipant <- participantRepo.get(participant.email)
-        _ <- logger.debug(
-          s"Checking for existing participant, found $mbParticipant"
-        )
-        _ <- mbParticipant.fold(ifEmpty = participantRepo.insert(participant))(
-          found =>
-            Async[F].raiseError(Conflict(s"Participant already exists $found"))
+        inserted <- participantRepo.insert(participant)
+        _ <- Async[F].raiseUnless(inserted)(
+          Conflict(s"A participant with email ${participant.email} is already registered")
         )
       } yield participant
     }

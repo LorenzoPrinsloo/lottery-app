@@ -12,7 +12,8 @@ import io.circe.{Decoder, Encoder, Json}
 import io.circe.parser.decode
 
 trait ParticipantRepository[F[_]] extends Logging[F] {
-  def insert(participant: Participant): F[Unit]
+  /** Stores the participant unless one with the same email exists; true if it was stored. Atomic. */
+  def insert(participant: Participant): F[Boolean]
   def get(email: String): F[Option[Participant]]
 }
 object ParticipantRepository {
@@ -21,7 +22,7 @@ object ParticipantRepository {
   ): ParticipantRepository[F] = new ParticipantRepository[F] {
     private def key(id: String): String = s"participant:${Crypto.sha256(id)}"
 
-    override def insert(participant: Participant): F[Unit] = redis.set(
+    override def insert(participant: Participant): F[Boolean] = redis.setNx(
       key(participant.email),
       participant.asJson.noSpaces
     )

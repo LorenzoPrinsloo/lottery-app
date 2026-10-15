@@ -1,7 +1,7 @@
 package com.lottery.api.service
 
 import cats.effect.kernel.Async
-import com.lottery.domain.{Ballot, Participant}
+import com.lottery.domain.{Ballot, Participant, Validation}
 import com.lottery.persistence.ParticipantRepository
 import cats.implicits.*
 import com.lottery.domain.Ballot.BallotId
@@ -34,9 +34,13 @@ object LotteryService {
       lotteryRepo: LotteryRepository[F]
   ): LotteryService[F] = new LotteryService[F] {
     override def registerParticipant(
-        participant: Participant
+        request: Participant
     ): F[Participant] = {
       for {
+        participant <- Async[F].fromEither(
+          (Validation.name(request.name), Validation.email(request.email))
+            .mapN((name, email) => request.copy(name = name, email = email))
+        )
         mbParticipant <- participantRepo.get(participant.email)
         _ <- logger.debug(
           s"Checking for existing participant, found $mbParticipant"
@@ -49,11 +53,13 @@ object LotteryService {
     }
 
     override def submitBallots(
-        email: String,
+        rawEmail: String,
         lotteryDate: LocalDate,
-        noBallots: Int
+        requestedBallots: Int
     ): F[SubmitBallotsResponse] = {
       for {
+        email <- Async[F].fromEither(Validation.email(rawEmail))
+        noBallots <- Async[F].fromEither(Validation.ballotCount(requestedBallots))
         mbParticipant <- participantRepo.get(email)
         response <- mbParticipant.fold(ifEmpty =
           Async[F].raiseError[SubmitBallotsResponse](

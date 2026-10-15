@@ -101,4 +101,13 @@ class LotteryRoutesSpec extends CatsEffectSuite {
         post(c, Uri.unsafeFromString(s"/lotteries/$future/ballots"), Json.obj("email" -> Json.fromString("ada@example.com"), "count" -> Json.fromString("five")))
     }.map((status, _) => assertEquals(status, Status.BadRequest))
   }
+
+  test("a ballot count of zero is a 400 Bad Request") {
+    client.flatMap((c, _) => register(c, "Ada", "ada@example.com") *> ballots(c, future, "ada@example.com", 0))
+      .map((status, _) => assertEquals(status, Status.BadRequest))
+  }
+
+  test("an invalid email is a 400 Bad Request") {
+    client.flatMap((c, _) => register(c, "Ada", "not-an-email")).map((status, _) => assertEquals(status, Status.BadRequest))
+  }
 }

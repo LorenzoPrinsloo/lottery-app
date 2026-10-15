@@ -101,4 +101,49 @@ class LotteryServiceSpec extends CatsEffectSuite {
       } yield assertEquals(response.winnerName, None)
     }
   }
+
+  private def badRequest[A](io: IO[A]): IO[Unit] =
+    io.attempt.map(r => assert(r.left.exists(_.isInstanceOf[ApiError.BadRequest]), r))
+
+  test("a participant needs a name") {
+    service().flatMap((svc, _, _) => badRequest(svc.registerParticipant(ada.copy(name = "   "))))
+  }
+
+  test("a participant needs a valid email address") {
+    service().flatMap { (svc, _, _) =>
+      List("", "ada", "ada@", "@example.com", "ada@example", "a da@example.com").traverse_(e => badRequest(svc.registerParticipant(ada.copy(email = e))))
+    }
+  }
+
+  test("emails are stored trimmed and in lower case, so case doesn't create a second participant") {
+    service().flatMap { (svc, participants, _) =>
+      for {
+        registered <- svc.registerParticipant(ada.copy(name = " Ada ", email = " Ada@Example.COM "))
+        again <- svc.registerParticipant(ada.copy(email = "ada@example.com")).attempt
+        stored <- participants.get("ada@example.com")
+      } yield {
+        assertEquals(registered.email, "ada@example.com")
+        assertEquals(registered.name, "Ada")
+        assertEquals(stored.map(_.email), Some("ada@example.com"))
+        assert(again.left.exists(_.isInstanceOf[ApiError.Conflict]), again)
+      }
+    }
+  }
+
+  test("ballots can be submitted with the email in any case") {
+    service(ada).flatMap((svc, _, _) => svc.submitBallots(" ADA@example.com", today, 2)).map(r => assertEquals(r.totalBallotsForLottery, 2L))
+  }
+
+  test("a ballot count must be between 1 and 1000, and a rejected count stores nothing") {
+    service(ada).flatMap { (svc, _, lotteries) =>
+      List(0, -1, Int.MinValue, 1001, Int.MaxValue).traverse_(n => badRequest(svc.submitBallots(ada.email, today, n))) *>
+        lotteries.getOpen(today).map(open => assertEquals(open, None))
+    }
+  }
+
+  test("any count from 1 to 1000 is accepted") {
+    service(ada).flatMap { (svc, _, _) =>
+      List(1, 2, 999, 1000).traverse(n => svc.submitBallots(ada.email, today.plusDays(n.toLong), n).map(_.ballotsSubmitted))
+    }.map(counts => assertEquals(counts, List(1L, 2L, 999L, 1000L)))
+  }
 }

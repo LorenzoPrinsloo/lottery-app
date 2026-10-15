@@ -7,6 +7,8 @@ import org.http4s.*
 import org.http4s.dsl.Http4sDsl
 import org.http4s.server.AuthMiddleware as Http4sAuthMiddleware
 import org.http4s.implicits.http4sStringSyntax
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 
 object AuthMiddleware {
 
@@ -21,7 +23,7 @@ object AuthMiddleware {
   ): Kleisli[[A] =>> OptionT[F, A], Request[F], Unit] =
     Kleisli { req =>
       val maybeHeader = req.headers.get("X-Api-Secret".ci)
-      val isAuthorized = maybeHeader.exists(_.head.value == secret)
+      val isAuthorized = maybeHeader.exists(h => sameSecret(h.head.value, secret))
 
       if (isAuthorized) {
         OptionT.liftF(Async[F].pure(()))
@@ -29,6 +31,10 @@ object AuthMiddleware {
         OptionT.none[F, Unit]
       }
     }
+
+  /** Compares in constant time, so response timing doesn't reveal how much of a guess was right. */
+  private[modules] def sameSecret(provided: String, expected: String): Boolean =
+    MessageDigest.isEqual(provided.getBytes(StandardCharsets.UTF_8), expected.getBytes(StandardCharsets.UTF_8))
 
   def apply[F[_]: Async](secret: String): Http4sAuthMiddleware[F, Unit] =
     Http4sAuthMiddleware(authUser(secret))

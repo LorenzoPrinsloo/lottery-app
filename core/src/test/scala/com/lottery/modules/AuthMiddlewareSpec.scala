@@ -26,4 +26,15 @@ class AuthMiddlewareSpec extends CatsEffectSuite {
   test("rejects a request with no secret") {
     call().assertEquals(Status.Unauthorized)
   }
+
+  test("rejects a secret that only shares a prefix with the real one") {
+    call(Header.Raw(ci"X-Api-Secret", "s3cre")).assertEquals(Status.Unauthorized) *>
+      call(Header.Raw(ci"X-Api-Secret", "s3cret!")).assertEquals(Status.Unauthorized)
+  }
+
+  test("compares secrets byte for byte, including non-ASCII characters") {
+    assert(AuthMiddleware.sameSecret("pässwörd", "pässwörd"))
+    assert(!AuthMiddleware.sameSecret("pässwörd", "passwort"))
+    assert(!AuthMiddleware.sameSecret("", "s3cret"))
+  }
 }

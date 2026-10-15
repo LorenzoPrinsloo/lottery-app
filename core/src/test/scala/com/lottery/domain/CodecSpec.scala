@@ -25,4 +25,9 @@ class CodecSpec extends ScalaCheckSuite {
       decode[Participant](p.asJson.noSpaces) == Right(p)
     }
   }
+
+  test("a ballot id that isn't a UUID is a decoding failure, not an exception") {
+    val json = """{"id":"nope","email":"a@b.com","lotteryDate":"2030-01-01","submittedAt":"2030-01-01T00:00"}"""
+    assert(decode[Ballot](json).isLeft)
+  }
 }

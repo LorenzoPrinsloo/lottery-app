@@ -66,6 +66,15 @@ class RedisRepositoriesSpec extends RedisSuite {
     }
   }
 
+  test("a corrupt ballot in Redis is reported as an internal error") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      val corrupt = """{"id":"nope","email":"a@b.com","lotteryDate":"2030-06-15","submittedAt":"2030-06-15T12:00"}"""
+      redis.lPush(s"lottery:open:$today", corrupt) *>
+        repo.getOpen(today).attempt.map(r => assert(r.left.exists(_.isInstanceOf[ApiError.InternalServerError]), r))
+    }
+  }
+
   test("participants are stored and found by email") {
     withRedis { redis =>
       val repo = ParticipantRepository.redis[IO](redis)

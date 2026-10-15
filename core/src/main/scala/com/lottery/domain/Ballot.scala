@@ -16,7 +16,7 @@ object Ballot {
   opaque type BallotId = UUID
   object BallotId:
     given ballotIdCodec: Codec[BallotId] = Codec.from[BallotId](
-      Decoder[String].map[BallotId](s => BallotId(UUID.fromString(s))),
+      Decoder.decodeUUID.map(BallotId(_)),
       Encoder.encodeUUID.contramap(id => id)
     )
     def apply(uuid: UUID): BallotId = uuid

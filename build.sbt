@@ -11,13 +11,26 @@ val logbackVersion = "1.5.18"
 val ip4sVersion = "3.7.0"
 val log4catsVersion = "2.7.1"
 val pureConfigVersion = "0.17.9"
+val testcontainersVersion = "0.41.4"
 
 ThisBuild / organization := "com.lottery"
 ThisBuild / version      := "1.0.0"
 ThisBuild / scalaVersion := "3.3.6"
 
-lazy val commonDependencies = Seq(
+// testcontainers-scala 0.41.x brings Testcontainers 1.19, which Docker Engine 29+ rejects (API too old)
+ThisBuild / dependencyOverrides += "org.testcontainers" % "testcontainers" % "1.21.4"
+
+lazy val testDependencies = Seq(
   "org.scalameta" %% "munit" % "1.0.0" % Test,
+  "org.scalameta" %% "munit-scalacheck" % "1.0.0" % Test,
+  "org.typelevel" %% "munit-cats-effect" % "2.0.0" % Test,
+  "org.typelevel" %% "cats-effect-testkit" % catsEffectVersion % Test,
+  "org.http4s" %% "http4s-client" % http4sVersion % Test,
+  "com.dimafeng" %% "testcontainers-scala-munit" % testcontainersVersion % Test,
+  "ch.qos.logback" % "logback-classic" % logbackVersion % Test
+)
+
+lazy val commonDependencies = testDependencies ++ Seq(
   // --- Concurrency ---
   "org.typelevel" %% "cats-core" % catsVersion,
   "org.typelevel" %% "cats-effect" % catsEffectVersion,
@@ -62,11 +75,11 @@ lazy val core = (project in file("core"))
   )
 
 lazy val lotteryApi = (project in file("lottery-api"))
-  .dependsOn(core)
+  .dependsOn(core % "compile->compile;test->test")
   .enablePlugins(DockerPlugin, JavaAppPackaging, AshScriptPlugin)
   .settings(
     name := "lottery-service", // This will be the name of the Docker image
-//    libraryDependencies ++= commonDependencies,
+    libraryDependencies ++= testDependencies,
     scalaVersion := scala3Version,
     mainClass := Some("com.lottery.api.Main"),
     dockerBaseImage := "eclipse-temurin:17-jre-alpine",
@@ -76,11 +89,11 @@ lazy val lotteryApi = (project in file("lottery-api"))
   )
 
 lazy val lotteryDraw = (project in file("lottery-draw"))
-  .dependsOn(core)
+  .dependsOn(core % "compile->compile;test->test")
   .enablePlugins(DockerPlugin, JavaAppPackaging, AshScriptPlugin)
   .settings(
     name := "draw-service", // This will be the name of the Docker image
-    libraryDependencies ++= Seq(
+    libraryDependencies ++= testDependencies ++ Seq(
       "org.simplejavamail" % "simple-java-mail" % "8.11.1"
     ),
     scalaVersion := scala3Version,

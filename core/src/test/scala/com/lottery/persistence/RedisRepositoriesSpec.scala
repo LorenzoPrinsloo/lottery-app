@@ -1,0 +1,92 @@
+package com.lottery.persistence
+
+import cats.effect.IO
+import cats.syntax.all.*
+import com.lottery.domain.LotteryStatus
+import com.lottery.domain.error.ApiError
+import com.lottery.testkit.Fixtures.*
+import com.lottery.testkit.RedisSuite
+
+/** Runs the Redis repositories against a real Redis in Docker. */
+class RedisRepositoriesSpec extends RedisSuite {
+
+  test("submitted ballots can be read back as the open lottery") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      val ballots = List(ballot("a@x.com"), ballot("b@x.com"), ballot("a@x.com"))
+      for {
+        total <- repo.submitBallots(today, ballots)
+        open <- repo.getOpen(today)
+      } yield {
+        assertEquals(total, 3L)
+        assertEquals(open.map(_.status), Some(LotteryStatus.OPEN))
+        assertEquals(open.map(_.ballots.toSet), Some(ballots.toSet))
+      }
+    }
+  }
+
+  test("submitting no ballots stores nothing") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      (repo.submitBallots(today, Nil), repo.getOpen(today)).tupled.assertEquals((0L, None))
+    }
+  }
+
+  test("lotteries for different dates are kept apart") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      for {
+        _ <- repo.submitBallots(today, List(ballot()))
+        other <- repo.getOpen(today.plusDays(1))
+      } yield assertEquals(other, None)
+    }
+  }
+
+  test("closing a lottery removes its open ballots and stores the result") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      val r = result()
+      for {
+        _ <- repo.submitBallots(today, List(ballot()))
+        _ <- repo.closeLottery(r)
+        open <- repo.getOpen(today)
+        closed <- repo.getClosed(today)
+      } yield {
+        assertEquals(open, None)
+        assertEquals(closed, Some(r))
+      }
+    }
+  }
+
+  test("a corrupt result in Redis is reported as an internal error") {
+    withRedis { redis =>
+      val repo = LotteryRepository.redis[IO](redis)
+      redis.set(s"lottery:closed:$today", "{not json") *>
+        repo.getClosed(today).attempt.map(r => assert(r.left.exists(_.isInstanceOf[ApiError.InternalServerError]), r))
+    }
+  }
+
+  test("participants are stored and found by email") {
+    withRedis { redis =>
+      val repo = ParticipantRepository.redis[IO](redis)
+      val p = participant()
+      for {
+        _ <- repo.insert(p)
+        found <- repo.get(p.email)
+        missing <- repo.get("nobody@example.com")
+      } yield {
+        assertEquals(found, Some(p))
+        assertEquals(missing, None)
+      }
+    }
+  }
+
+  test("participant keys don't contain the email address") {
+    withRedis { redis =>
+      for {
+        _ <- ParticipantRepository.redis[IO](redis).insert(participant())
+        keys <- redis.keys("*")
+      } yield assert(keys.nonEmpty && keys.forall(k => !k.contains("ada")), keys.toString)
+    }
+  }
+}

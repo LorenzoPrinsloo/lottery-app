@@ -1,5 +1,7 @@
 # Lottery Service
 
+[![CI](https://github.com/LorenzoPrinsloo/lottery-app/actions/workflows/ci.yml/badge.svg)](https://github.com/LorenzoPrinsloo/lottery-app/actions/workflows/ci.yml)
+
 This project implements a simple lottery system as a set of microservices built with Scala, Cats Effect, and Http4s. The entire application stack is containerized and can be run locally using Docker Compose.
 
 The architecture consists of the following components:
@@ -7,8 +9,10 @@ The architecture consists of the following components:
 * **`lottery-api`**: A HTTP service that handles user registration and ballot submissions. This service is designed to be horizontally scalable.
 * **`lottery-draw`**: A single background worker service responsible for performing the daily lottery draw. It runs a cron job and also exposes a secure developer endpoint for manual draws.
 * **`redis`**: The database used for persistence.
-* **`ngnix`**: For DNS and routing.
+* **`nginx`**: The gateway, routing and load-balancing requests to the services.
 * **`mailhog`**: Mock Email Inbox and routing.
+
+**Documentation:** [Architecture](docs/architecture.md) (components, Redis data, how a draw stays atomic, the schedule) and [API](docs/api.md) (endpoints, validation and status codes).
 
 ***
 
@@ -26,6 +30,7 @@ The architecture consists of the following components:
     * [Lottery Draw](#lottery-draw)
     * [Email Notifications (MailHog)](#email-notifications-mailhog)
     * [Redis Persistence](#redis-persistence)
+4. [Testing](#testing)
 
 ***
 
@@ -136,7 +141,9 @@ You can customize this schedule by setting the following environment variables i
 
 * `DRAW_TIME`: Sets the time of day for the draw in `HH:mm` format (e.g., `"00:01"`).
 
-* `DAY_OFFSET`: Sets which day's lottery to draw. `1` means draw yesterday's lottery (default), `0` means draw today's lottery.
+* `DAY_OFFSET`: Sets which day's lottery to draw, relative to the day of the draw. `1` means draw yesterday's lottery (default), `0` means draw today's lottery.
+
+The draw stays at `DRAW_TIME` local time across daylight-saving changes. The API reads `TIME_ZONE` too, to decide which dates are in the past, so set it to the same value for both services.
 
 ### **Manual Draw (Developer Endpoint)**
 
@@ -166,3 +173,21 @@ The Redis service is configured for durability to ensure that no participant or 
 * **AOF (Append Only File) Persistence:** The `docker-compose.yml` file starts Redis with the `--appendonly yes` flag. This instructs Redis to log every write operation to a file on disk, providing strong durability.
 
 * **Docker Volume:** A named volume (`redis_data`) is configured to store this AOF file. This means the data lives on your host machine, outside the container. If you shut down and remove the containers with `docker-compose down`, the data will still be there. When you run `docker-compose up` again, Redis will automatically reload the data from the persisted file.
+
+***
+
+## Testing
+
+```bash
+sbt test
+```
+
+The tests need Docker running: the Redis repositories and the draw protocol are tested against a real Redis, started by [Testcontainers](https://testcontainers.com). GitHub Actions runs the full suite on every push.
+
+What's covered:
+
+* **Domain:** JSON codecs and hashing (property-based tests), validation of names, emails and ballot counts.
+* **API:** every route through http4s's in-memory client, including malformed bodies and status codes. Time and ids are controlled with Cats Effect's `TestControl`, including the time-zone edge just after midnight.
+* **Draw:** the winner is always a submitted ballot, each ballot has an equal chance (a statistical test over 2000 draws), and a failed email doesn't undo a draw.
+* **Concurrency against real Redis:** 25 simultaneous registrations of one email produce exactly one participant, 20 simultaneous draws produce one winner, and ballots submitted while a draw starts are never lost.
+* **Schedule:** the nightly draw on a simulated clock, including across the change to summer time, and recovery from a failed draw.

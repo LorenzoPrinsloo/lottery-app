@@ -4,7 +4,9 @@ import cats.effect.{Async, Temporal}
 import cats.effect.std.Random
 import com.lottery.persistence.{LotteryRepository, ParticipantRepository}
 import cats.implicits.*
-import com.lottery.domain.{LotteryResult, Participant}
+import com.lottery.domain.{Lottery, LotteryResult, Participant}
+import com.lottery.domain.error.ApiError.Conflict
+import com.lottery.persistence.DrawClaim
 import com.lottery.draw.client.EmailClient
 import com.lottery.draw.domain.response.LotteryResultResponse
 import com.lottery.logging.Logging
@@ -48,41 +50,39 @@ object DrawService {
 
     override def performDraw(
         date: LocalDate
-    ): F[Option[LotteryResultResponse]] = for {
-      drawTime <- Temporal[F].realTimeInstant
-      mbLottery <- lotteryRepo.getOpen(date)
-      result <- mbLottery
-        .fold(ifEmpty =
-          logger
-            .warn(
-              s"No lottery or no ballots found for $date. No draw will be performed."
-            )
-            .as(Option.empty[LotteryResultResponse])
-        ) { lottery =>
-          for {
-            _ <- logger.info(
-              s"Performing draw for ${lottery.ballots.size} ballots on $date."
-            )
-            winningBallot <- Random[F].elementOf(lottery.ballots)
-            _ <- logger.info(
-              s"🎉 The winner for $date is participant ${winningBallot.email}! 🎉"
-            )
-            lotteryResult = LotteryResult(
-              date,
-              winningBallot.id,
-              winningBallot.email,
-              drawTime.atZone(systemZone).toLocalDateTime()
-            )
-            _ <- lotteryRepo.closeLottery(lotteryResult)
-            winner <- participantRepo.get(winningBallot.email)
-            _ <- sendNotification(winner, date)
-          } yield LotteryResultResponse(
-            lotteryResult.lotteryDate,
-            lotteryResult.winningBallotId,
-            winner,
-            lotteryResult.drawnAt
-          ).some
-        }
-    } yield result
+    ): F[Option[LotteryResultResponse]] =
+      lotteryRepo.startDraw(date).flatMap {
+        case DrawClaim.AlreadyDrawn =>
+          logger.warn(s"The lottery for $date has already been drawn.").as(None)
+        case DrawClaim.NoBallots =>
+          logger.warn(s"No ballots found for $date. No draw will be performed.").as(None)
+        case DrawClaim.InProgress =>
+          Async[F].raiseError(Conflict(s"A draw for $date is already in progress"))
+        case DrawClaim.Claimed(lottery, token) =>
+          drawWinner(lottery, token)
+            .onError(_ => lotteryRepo.abandonDraw(date, token))
+            .flatMap { (result, winner) =>
+              sendNotification(winner, date)
+                .handleErrorWith(error => logger.error(error)(s"Couldn't send the winner notification for $date"))
+                .as(LotteryResultResponse(result.lotteryDate, result.winningBallotId, winner, result.drawnAt).some)
+            }
+      }
+
+    /** Picks a winning ballot from a claimed lottery and stores the result. */
+    private def drawWinner(lottery: Lottery, token: String): F[(LotteryResult, Option[Participant])] =
+      for {
+        drawTime <- Temporal[F].realTimeInstant
+        _ <- logger.info(s"Performing draw for ${lottery.ballots.size} ballots on ${lottery.date}.")
+        winningBallot <- Random[F].elementOf(lottery.ballots)
+        _ <- logger.info(s"🎉 The winner for ${lottery.date} is participant ${winningBallot.email}! 🎉")
+        result = LotteryResult(
+          lottery.date,
+          winningBallot.id,
+          winningBallot.email,
+          drawTime.atZone(systemZone).toLocalDateTime()
+        )
+        _ <- lotteryRepo.completeDraw(result, token)
+        winner <- participantRepo.get(winningBallot.email)
+      } yield (result, winner)
   }
 }

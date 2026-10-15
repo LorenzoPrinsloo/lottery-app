@@ -83,7 +83,7 @@ class LotteryServiceSpec extends CatsEffectSuite {
     val r = result(today, ada.email)
     service(ada).flatMap { (svc, _, lotteries) =>
       for {
-      _ <- lotteries.closeLottery(r)
+      _ <- lotteries.recordResult(r)
       response <- svc.fetchLotteryResult(today)
       } yield {
       assertEquals(response.winnerName, Some("Ada"))
@@ -96,7 +96,7 @@ class LotteryServiceSpec extends CatsEffectSuite {
   test("a winner who is no longer registered is reported without a name") {
     service().flatMap { (svc, _, lotteries) =>
       for {
-      _ <- lotteries.closeLottery(result(today, "gone@example.com"))
+      _ <- lotteries.recordResult(result(today, "gone@example.com"))
       response <- svc.fetchLotteryResult(today)
       } yield assertEquals(response.winnerName, None)
     }

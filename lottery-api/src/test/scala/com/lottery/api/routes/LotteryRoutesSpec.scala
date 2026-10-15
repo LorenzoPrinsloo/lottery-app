@@ -71,7 +71,7 @@ class LotteryRoutesSpec extends CatsEffectSuite {
     client.flatMap { (c, lotteries) =>
       for {
       _ <- register(c, "Ada", "ada@example.com")
-      _ <- lotteries.closeLottery(result(future, "ada@example.com"))
+      _ <- lotteries.recordResult(result(future, "ada@example.com"))
       body <- c.expect[Json](Uri.unsafeFromString(s"/lotteries/$future/winner"))
     } yield {
       assertEquals(body.hcursor.get[String]("winnerName"), Right("Ada"))
@@ -109,5 +109,12 @@ class LotteryRoutesSpec extends CatsEffectSuite {
 
   test("an invalid email is a 400 Bad Request") {
     client.flatMap((c, _) => register(c, "Ada", "not-an-email")).map((status, _) => assertEquals(status, Status.BadRequest))
+  }
+
+  test("ballots for a lottery that has already been drawn are a 409 Conflict") {
+    client.flatMap { (c, lotteries) =>
+      register(c, "Ada", "ada@example.com") *> lotteries.recordResult(result(future, "ada@example.com")) *>
+        ballots(c, future, "ada@example.com", 1)
+    }.map((status, _) => assertEquals(status, Status.Conflict))
   }
 }

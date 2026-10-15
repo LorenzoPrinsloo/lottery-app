@@ -67,7 +67,10 @@ object LotteryService {
             submitTime <- Async[F].realTimeInstant.map(LocalDateTime.ofInstant(_, zone))
             ids <- List.fill(noBallots)(UUIDGen[F].randomUUID).sequence
             ballots = ids.map(id => Ballot(BallotId(id), participant.email, lotteryDate, submitTime))
-            _ <- lotteryRepo.submitBallots(lotteryDate, ballots)
+            accepted <- lotteryRepo.submitBallots(lotteryDate, ballots)
+            _ <- Async[F].raiseWhen(accepted.isEmpty)(
+              Conflict(s"The lottery for $lotteryDate has already been drawn")
+            )
             lottery <- lotteryRepo.getOpen(lotteryDate)
           } yield SubmitBallotsResponse(
             lotteryDate,

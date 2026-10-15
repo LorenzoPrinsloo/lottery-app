@@ -102,4 +102,68 @@ class DrawServiceSpec extends CatsEffectSuite {
       assert(math.abs(share - 0.75) < 0.04, s"Ada won $share of draws")
     }
   }
+
+  test("when two draws run at once, one draws a winner and the other is told a draw is in progress") {
+    for {
+      s <- setup(5L, ada)(ballot(ada.email), ballot(ada.email))
+      results <- (s.service.performDraw(today).attempt, s.service.performDraw(today).attempt).parTupled
+    } yield {
+      val outcomes = List(results._1, results._2)
+      assertEquals(outcomes.count(_.exists(_.isDefined)), 1)
+      assert(outcomes.forall(o => o.exists(_.isDefined) || o.left.exists(_.isInstanceOf[com.lottery.domain.error.ApiError.Conflict]) || o == Right(None)), outcomes)
+    }
+  }
+
+  test("drawing a lottery that has already been drawn does nothing") {
+    for {
+      s <- setup(5L, ada)(ballot(ada.email))
+      first <- s.service.performDraw(today)
+      second <- s.service.performDraw(today)
+      sent <- s.mail.sent.get
+    } yield {
+      assert(first.isDefined)
+      assertEquals(second, None)
+      assertEquals(sent.size, 1)
+    }
+  }
+
+  test("if the email can't be sent, the draw still stands") {
+    val failingMail = new com.lottery.draw.client.EmailClient[IO] {
+      def sendMail(email: org.simplejavamail.api.email.Email): IO[Unit] = IO.raiseError(new RuntimeException("SMTP down"))
+    }
+    for {
+      participants <- InMemoryParticipantRepository.make[IO](ada)
+      lotteries <- InMemoryLotteryRepository.make[IO]
+      _ <- lotteries.submitBallots(today, List(ballot(ada.email)))
+      random <- Random.scalaUtilRandomSeedLong[IO](1L)
+      result <- DrawService.default[IO](lotteries, participants, failingMail, zone)(using summon, random).performDraw(today)
+      closed <- lotteries.getClosed(today)
+    } yield {
+      assert(result.isDefined)
+      assertEquals(closed.map(_.winnerEmail), Some(ada.email))
+    }
+  }
+
+  test("if storing the result fails, the ballots are released so the draw can be retried") {
+    for {
+      participants <- InMemoryParticipantRepository.make[IO](ada)
+      lotteries <- InMemoryLotteryRepository.make[IO]
+      _ <- lotteries.submitBallots(today, List(ballot(ada.email), ballot(ada.email)))
+      failures <- cats.effect.Ref.of[IO, Int](1)
+      flaky = new com.lottery.persistence.LotteryRepository[IO] {
+        export lotteries.{submitBallots, getOpen, getClosed, startDraw, abandonDraw}
+        def completeDraw(result: com.lottery.domain.LotteryResult, token: String): IO[Unit] =
+          failures.getAndUpdate(n => (n - 1).max(0)).flatMap(left =>
+            if (left > 0) IO.raiseError(new RuntimeException("Redis timed out")) else lotteries.completeDraw(result, token))
+      }
+      mail <- RecordingEmailClient.make
+      random <- Random.scalaUtilRandomSeedLong[IO](1L)
+      service = DrawService.default[IO](flaky, participants, mail, zone)(using summon, random)
+      failed <- service.performDraw(today).attempt
+      retried <- service.performDraw(today)
+    } yield {
+      assert(failed.isLeft)
+      assert(retried.isDefined)
+    }
+  }
 }

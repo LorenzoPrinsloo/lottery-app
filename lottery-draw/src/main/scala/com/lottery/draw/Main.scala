@@ -1,6 +1,6 @@
 package com.lottery.draw
 
-import cats.effect.std.Random
+import cats.effect.std.{Random, UUIDGen}
 import cats.effect.{Async, IO, IOApp, Resource}
 import com.lottery.config.ConfigLoader
 import com.lottery.draw.client.EmailClient
@@ -34,7 +34,7 @@ object Main extends IOApp.Simple with Logging[IO] {
     ).orNotFound
   }
 
-  private def resources[F[_]: Async: MkRedis: Log: Random](
+  private def resources[F[_]: Async: MkRedis: Log: Random: UUIDGen](
       config: AppConfig
   ): Resource[
     F,

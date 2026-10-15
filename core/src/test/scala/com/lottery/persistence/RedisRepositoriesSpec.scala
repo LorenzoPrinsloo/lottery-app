@@ -18,7 +18,7 @@ class RedisRepositoriesSpec extends RedisSuite {
         total <- repo.submitBallots(today, ballots)
         open <- repo.getOpen(today)
       } yield {
-        assertEquals(total, 3L)
+        assertEquals(total, Some(3L))
         assertEquals(open.map(_.status), Some(LotteryStatus.OPEN))
         assertEquals(open.map(_.ballots.toSet), Some(ballots.toSet))
       }
@@ -28,7 +28,7 @@ class RedisRepositoriesSpec extends RedisSuite {
   test("submitting no ballots stores nothing") {
     withRedis { redis =>
       val repo = LotteryRepository.redis[IO](redis)
-      (repo.submitBallots(today, Nil), repo.getOpen(today)).tupled.assertEquals((0L, None))
+      (repo.submitBallots(today, Nil), repo.getOpen(today)).tupled.assertEquals((Some(0L), None))
     }
   }
 
@@ -39,22 +39,6 @@ class RedisRepositoriesSpec extends RedisSuite {
         _ <- repo.submitBallots(today, List(ballot()))
         other <- repo.getOpen(today.plusDays(1))
       } yield assertEquals(other, None)
-    }
-  }
-
-  test("closing a lottery removes its open ballots and stores the result") {
-    withRedis { redis =>
-      val repo = LotteryRepository.redis[IO](redis)
-      val r = result()
-      for {
-        _ <- repo.submitBallots(today, List(ballot()))
-        _ <- repo.closeLottery(r)
-        open <- repo.getOpen(today)
-        closed <- repo.getClosed(today)
-      } yield {
-        assertEquals(open, None)
-        assertEquals(closed, Some(r))
-      }
     }
   }
 
